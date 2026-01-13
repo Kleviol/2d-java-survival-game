@@ -1,0 +1,2 @@
+﻿rootProject.name = "city-survival"
+include("desktop", "core")
