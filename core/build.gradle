@@ -1,9 +1,18 @@
-﻿plugins {
+plugins {
     id "java-library"
 }
 
 java {
-    toolchain { languageVersion = JavaLanguageVersion.of(17) }
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+}
+
+sourceSets {
+    main {
+        resources {
+            // Make assets/* appear at the root of the classpath (maps/, sprites/, config/)
+            srcDirs = ["src/main/resources/assets"]
+        }
+    }
 }
 
 dependencies {
@@ -13,7 +22,6 @@ dependencies {
     // TMX / Tiled
     api "com.badlogicgames.gdx:gdx-backend-lwjgl3:1.12.1"
     api "com.badlogicgames.gdx:gdx-platform:1.12.1:natives-desktop"
-    api "com.badlogicgames.gdx:gdx-tiled:1.12.1"
 
     // JSON + Supabase HTTP
     implementation "com.google.code.gson:gson:2.11.0"

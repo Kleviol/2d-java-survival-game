@@ -1,4 +1,4 @@
-﻿package com.citysurvival.core.model;
+package com.citysurvival.core.model;
 
 public class GameStats {
     public int steps = 0;

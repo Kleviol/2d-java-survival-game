@@ -1,4 +1,4 @@
-﻿package com.citysurvival.core.logic;
+package com.citysurvival.core.logic;
 
 import com.citysurvival.core.model.Enemy;
 import com.citysurvival.core.model.Player;

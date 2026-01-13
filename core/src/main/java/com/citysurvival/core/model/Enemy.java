@@ -1,4 +1,4 @@
-﻿package com.citysurvival.core.model;
+package com.citysurvival.core.model;
 
 import com.citysurvival.core.model.items.Weapon;
 

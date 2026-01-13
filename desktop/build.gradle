@@ -1,10 +1,10 @@
-﻿plugins {
+plugins {
     id "application"
     id "java"
 }
 
 java {
-    toolchain { languageVersion = JavaLanguageVersion.of(17) }
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
 }
 
 dependencies {
@@ -12,7 +12,6 @@ dependencies {
     implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:1.12.1"
     implementation "com.badlogicgames.gdx:gdx-platform:1.12.1:natives-desktop"
     implementation "com.badlogicgames.gdx:gdx-freetype-platform:1.12.1:natives-desktop"
-    implementation "com.badlogicgames.gdx:gdx-tiled:1.12.1"
 }
 
 application {

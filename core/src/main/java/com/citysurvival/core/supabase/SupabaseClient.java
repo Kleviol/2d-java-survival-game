@@ -1,8 +1,13 @@
-﻿package com.citysurvival.core.supabase;
-
-import okhttp3.*;
+package com.citysurvival.core.supabase;
 
 import java.io.IOException;
+
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 public class SupabaseClient {
     private final OkHttpClient http = new OkHttpClient();
@@ -27,10 +32,12 @@ public class SupabaseClient {
                 .build();
 
         try (Response resp = http.newCall(request).execute()) {
+            ResponseBody body = resp.body();
+            String bodyString = body != null ? body.string() : "";
             if (!resp.isSuccessful()) {
-                throw new IOException("Supabase error " + resp.code() + ": " + resp.body().string());
+                throw new IOException("Supabase error " + resp.code() + ": " + bodyString);
             }
-            return resp.body().string();
+            return bodyString;
         }
     }
 
@@ -45,10 +52,12 @@ public class SupabaseClient {
                 .build();
 
         try (Response resp = http.newCall(request).execute()) {
+            ResponseBody body = resp.body();
+            String bodyString = body != null ? body.string() : "";
             if (!resp.isSuccessful()) {
-                throw new IOException("Supabase error " + resp.code() + ": " + resp.body().string());
+                throw new IOException("Supabase error " + resp.code() + ": " + bodyString);
             }
-            return resp.body().string();
+            return bodyString;
         }
     }
 }

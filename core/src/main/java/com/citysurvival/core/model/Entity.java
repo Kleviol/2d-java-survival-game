@@ -1,4 +1,4 @@
-﻿package com.citysurvival.core.model;
+package com.citysurvival.core.model;
 
 public abstract class Entity {
     protected int x;

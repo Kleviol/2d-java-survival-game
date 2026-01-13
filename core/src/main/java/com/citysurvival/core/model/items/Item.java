@@ -1,4 +1,4 @@
-﻿package com.citysurvival.core.model.items;
+package com.citysurvival.core.model.items;
 
 public interface Item {
     String id();

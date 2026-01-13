@@ -1,11 +1,11 @@
-﻿package com.citysurvival.core;
+package com.citysurvival.core;
 
 import com.badlogic.gdx.Game;
-import com.citysurvival.core.screens.GameScreen;
+import com.citysurvival.core.screens.MainMenuScreen;
 
 public class CitySurvivalGame extends Game {
     @Override
     public void create() {
-        setScreen(new GameScreen());
+        setScreen(new MainMenuScreen(this));
     }
 }

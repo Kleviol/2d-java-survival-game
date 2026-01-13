@@ -1,5 +1,6 @@
-﻿plugins {
+plugins {
     id "base"
+    id "eclipse"
 }
 
 allprojects {
@@ -7,4 +8,8 @@ allprojects {
         mavenCentral()
         google()
     }
+}
+
+subprojects {
+    apply plugin: "eclipse"
 }

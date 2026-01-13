@@ -1,4 +1,4 @@
-﻿package com.citysurvival.core.io;
+package com.citysurvival.core.io;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;

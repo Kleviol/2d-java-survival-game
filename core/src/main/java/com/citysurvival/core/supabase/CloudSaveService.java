@@ -1,4 +1,4 @@
-﻿package com.citysurvival.core.supabase;
+package com.citysurvival.core.supabase;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;

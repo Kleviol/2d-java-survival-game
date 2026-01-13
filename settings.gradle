@@ -1,2 +1,2 @@
-﻿rootProject.name = "city-survival"
-include("desktop", "core")
+rootProject.name = "city-survival"
+include "desktop", "core"
