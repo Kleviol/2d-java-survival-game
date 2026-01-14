@@ -32,7 +32,6 @@ import com.citysurvival.core.model.GameStats;
 import com.citysurvival.core.model.Player;
 import com.citysurvival.core.model.TileType;
 import com.citysurvival.core.model.WorldObject;
-import com.citysurvival.core.model.items.Item;
 import com.citysurvival.core.model.items.ItemType;
 import com.citysurvival.core.model.items.Weapon;
 import com.citysurvival.core.supabase.CloudSaveService;
@@ -60,8 +59,6 @@ public class GameScreen extends ScreenAdapter {
     private boolean useTextures;
 
     private boolean debugCollision = false;
-    private int lastBlockedX = -1;
-    private int lastBlockedY = -1;
 
     private int tileSize = 32;
     private String tmxMapPath = "maps/city1.tmx";
@@ -167,9 +164,14 @@ public class GameScreen extends ScreenAdapter {
             playerRegion = trimWholeTexture(playerPath, texPlayer);
         }
         texEnemy = tryLoad("sprites/enemy.png");
-        texFood = tryLoad("sprites/food.png");
-        texW1 = tryLoad("sprites/weapon_lv1.png");
-        texW2 = tryLoad("sprites/weapon_lv2.png");
+        texFood = tryLoad("sprites/food/food.png");
+        if (texFood == null) texFood = tryLoad("sprites/food.png");
+        texW1 = tryLoad("sprites/weapons/weapon1.png");
+        texW2 = tryLoad("sprites/weapons/weapon2.png");
+
+        // Backwards-compatible fallbacks if old filenames still exist.
+        if (texW1 == null) texW1 = tryLoad("sprites/weapon_lv1.png");
+        if (texW2 == null) texW2 = tryLoad("sprites/weapon_lv2.png");
 
         // Only controls whether we attempt to draw textures at all.
         useTextures = heroSheet != null || texPlayer != null || texEnemy != null || texFood != null || texW1 != null || texW2 != null;
@@ -277,6 +279,7 @@ public class GameScreen extends ScreenAdapter {
 
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
+        batch.setColor(Color.WHITE);
         if (debugCollision) drawCollisionOverlay();
         drawObjects();
         drawEnemies();
@@ -285,6 +288,7 @@ public class GameScreen extends ScreenAdapter {
 
         batch.setProjectionMatrix(hudCamera.combined);
         batch.begin();
+        batch.setColor(Color.WHITE);
         drawHud();
         batch.end();
     }
@@ -295,7 +299,7 @@ public class GameScreen extends ScreenAdapter {
             return;
         }
 
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F)) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
             player.inventory().useFirstFood(player);
         }
         if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) {
@@ -313,8 +317,6 @@ public class GameScreen extends ScreenAdapter {
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
             debugCollision = !debugCollision;
-            lastBlockedX = -1;
-            lastBlockedY = -1;
         }
 
         Direction dir = null;
@@ -332,8 +334,6 @@ public class GameScreen extends ScreenAdapter {
 
         if (!inBounds(nx, ny)) return;
         if (!collision[nx][ny].walkable) {
-            lastBlockedX = nx;
-            lastBlockedY = ny;
             return;
         }
 
@@ -496,7 +496,8 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void drawHud() {
-        // Black, larger, semi-bold HUD text in a top-right column.
+        // Larger HUD text in a top-right column.
+        // Draw a panel behind it so it stays readable even when the map is dark.
         font.getData().setScale(1.4f);
         font.setColor(Color.BLACK);
 
@@ -524,11 +525,39 @@ public class GameScreen extends ScreenAdapter {
         float startX = Gdx.graphics.getWidth() - padding - maxWidth;
         float startY = Gdx.graphics.getHeight() - padding;
 
+        // Background panel for readability
+        if (debugPixel != null) {
+            float lineH = font.getLineHeight();
+            float totalH = (lines.length * lineH) + ((lines.length - 1) * lineGap);
+            float panelPadX = 14f;
+            float panelPadY = 10f;
+            float panelX = startX - panelPadX;
+            float panelY = (startY - totalH) - panelPadY;
+            float panelW = maxWidth + (panelPadX * 2f);
+            float panelH = totalH + (panelPadY * 2f);
+
+            Color prev = batch.getColor();
+            // Light panel so black text pops even on dark maps.
+            batch.setColor(1f, 1f, 1f, 0.70f);
+            batch.draw(debugPixel, panelX, panelY, panelW, panelH);
+
+            // Border
+            batch.setColor(0f, 0f, 0f, 0.55f);
+            float b = 2f;
+            batch.draw(debugPixel, panelX, panelY, panelW, b);
+            batch.draw(debugPixel, panelX, panelY + panelH - b, panelW, b);
+            batch.draw(debugPixel, panelX, panelY, b, panelH);
+            batch.draw(debugPixel, panelX + panelW - b, panelY, b, panelH);
+            batch.setColor(prev);
+        }
+
         float y = startY;
         for (String s : lines) {
             drawSemibold(font, s, startX, y);
             y -= (font.getLineHeight() + lineGap);
         }
+
+        drawInventoryPanel();
 
         // Keep game-over message visible.
         if (gameOver) {
@@ -536,6 +565,107 @@ public class GameScreen extends ScreenAdapter {
             font.setColor(Color.RED);
             drawSemibold(font, "GAME OVER - Press R to restart", 220, 360);
         }
+    }
+
+    private void drawInventoryPanel() {
+        if (debugPixel == null) return;
+
+        float sw = Gdx.graphics.getWidth();
+        float panelW = 360f;
+        float panelH = 90f;
+        float panelX = (sw - panelW) / 2f;
+        float panelY = 18f;
+
+        Color prev = batch.getColor();
+
+        // Panel background (semi-transparent, does not affect sprites because we restore batch color).
+        batch.setColor(1f, 1f, 1f, 0.70f);
+        batch.draw(debugPixel, panelX, panelY, panelW, panelH);
+
+        // 3-slot inventory.
+        float slot = 64f;
+        float gap = 18f;
+        float slotsW = (slot * 3f) + (gap * 2f);
+        float slotY = panelY + (panelH - slot) / 2f;
+        float firstSlotX = panelX + (panelW - slotsW) / 2f;
+
+        int foodCount = 0;
+        for (com.citysurvival.core.model.items.Item it : player.inventory().items()) {
+            if (it.type() == ItemType.FOOD) foodCount++;
+        }
+
+        boolean hasWeapon = player.inventory().equippedWeapon().isPresent();
+        int foodStartSlot = hasWeapon ? 1 : 0;
+        int remainingFood = foodCount;
+
+        float prevScaleX = font.getData().scaleX;
+        float prevScaleY = font.getData().scaleY;
+
+        for (int i = 0; i < 3; i++) {
+            float slotX = firstSlotX + i * (slot + gap);
+
+            // Slot border
+            batch.setColor(0f, 0f, 0f, 0.75f);
+            batch.draw(debugPixel, slotX, slotY, slot, 2f);
+            batch.draw(debugPixel, slotX, slotY + slot - 2f, slot, 2f);
+            batch.draw(debugPixel, slotX, slotY, 2f, slot);
+            batch.draw(debugPixel, slotX + slot - 2f, slotY, 2f, slot);
+
+            // Slot contents
+            if (i == 0 && hasWeapon) {
+                player.inventory().equippedWeapon().ifPresent(w -> {
+                    Texture t = (w.level() == 1) ? texW1 : texW2;
+                    if (t != null) {
+                        batch.setColor(1f, 1f, 1f, 1f);
+                        float pad = 6f;
+                        batch.draw(t, slotX + pad, slotY + pad, slot - 2 * pad, slot - 2 * pad);
+                    }
+                });
+            } else if (i >= foodStartSlot && remainingFood > 0) {
+                int inThisSlot = Math.min(3, remainingFood);
+                remainingFood -= inThisSlot;
+
+                if (texFood != null) {
+                    batch.setColor(1f, 1f, 1f, 1f);
+                    float pad = 6f;
+                    batch.draw(texFood, slotX + pad, slotY + pad, slot - 2 * pad, slot - 2 * pad);
+                }
+
+                // Stack count: bigger + outlined so it's readable over any icon/background.
+                font.getData().setScale(1.25f);
+                String countText = "x" + inThisSlot;
+                glyphLayout.setText(font, countText);
+                float inset = 8f;
+                float tx = slotX + slot - inset - glyphLayout.width;
+                float ty = slotY + 20f;
+                drawOutlined(font, countText, tx, ty, Color.WHITE, Color.BLACK);
+            }
+        }
+
+        font.getData().setScale(prevScaleX, prevScaleY);
+
+        batch.setColor(prev);
+    }
+
+    private void drawOutlined(BitmapFont font, String text, float x, float y, Color fill, Color outline) {
+        Color prev = font.getColor();
+
+        font.setColor(outline);
+        font.draw(batch, text, x - 1f, y);
+        font.draw(batch, text, x + 1f, y);
+        font.draw(batch, text, x, y - 1f);
+        font.draw(batch, text, x, y + 1f);
+        font.draw(batch, text, x - 1f, y - 1f);
+        font.draw(batch, text, x + 1f, y - 1f);
+        font.draw(batch, text, x - 1f, y + 1f);
+        font.draw(batch, text, x + 1f, y + 1f);
+
+        font.setColor(fill);
+        // Slightly thicker look
+        font.draw(batch, text, x + 1f, y);
+        font.draw(batch, text, x, y);
+
+        font.setColor(prev);
     }
 
     private void drawSemibold(BitmapFont font, String text, float x, float y) {

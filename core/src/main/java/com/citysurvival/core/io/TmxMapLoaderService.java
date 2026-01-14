@@ -73,7 +73,7 @@ public class TmxMapLoaderService {
             switch (name) {
                 case "player" -> player = new Player(tx, ty, 10);
                 case "enemy" -> enemies.add(new Enemy(tx, ty, new Weapon("Enemy Weapon L1", 1)));
-                case "food" -> objects.add(new WorldObject(tx, ty, new Food("Food", 2)));
+                case "food" -> objects.add(new WorldObject(tx, ty, new Food("Food", 1)));
                 case "weapon1" -> objects.add(new WorldObject(tx, ty, new Weapon("Weapon L1", 1)));
                 case "weapon2" -> objects.add(new WorldObject(tx, ty, new Weapon("Weapon L2", 2)));
                 default -> {}

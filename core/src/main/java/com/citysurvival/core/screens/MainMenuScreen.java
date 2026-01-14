@@ -42,6 +42,9 @@ public class MainMenuScreen extends ScreenAdapter {
     private float buttonW;
     private float buttonH;
 
+    // Left-column layout
+    private final float leftMargin = 70f;
+
     public MainMenuScreen(CitySurvivalGame game) {
         this.game = game;
     }
@@ -70,8 +73,8 @@ public class MainMenuScreen extends ScreenAdapter {
         layoutButton();
 
         // Slightly bigger menu text.
-        font.getData().setScale(1.8f);
-        font.setColor(Color.BLACK);
+        font.getData().setScale(2.2f);
+        font.setColor(Color.WHITE);
     }
 
     private void loadGameProperties() {
@@ -115,12 +118,12 @@ public class MainMenuScreen extends ScreenAdapter {
     }
 
     private void layoutButton() {
-        float sw = Gdx.graphics.getWidth();
         float sh = Gdx.graphics.getHeight();
 
         buttonW = 260f;
         buttonH = 70f;
-        buttonX = (sw - buttonW) / 2f;
+        // Place in left column (top-left to middle-left region)
+        buttonX = leftMargin;
         buttonY = sh / 2f - buttonH / 2f;
     }
 
@@ -163,6 +166,7 @@ public class MainMenuScreen extends ScreenAdapter {
         // HUD overlay + menu UI
         batch.setProjectionMatrix(hudCamera.combined);
         batch.begin();
+        batch.setColor(Color.WHITE);
 
         // Semi-transparent dim over the map.
         Color prev = batch.getColor();
@@ -172,19 +176,54 @@ public class MainMenuScreen extends ScreenAdapter {
 
         drawTitle();
         drawButton();
+        drawControls();
 
         batch.end();
     }
 
+    private void drawControls() {
+        float prevScaleX = font.getData().scaleX;
+        float prevScaleY = font.getData().scaleY;
+        font.getData().setScale(1.25f);
+        font.setColor(Color.WHITE);
+
+        float x = leftMargin;
+        float y = buttonY - 30f;
+        float gap = 30f;
+
+        String[] lines = new String[] {
+                "Controls:",
+                "Move: WASD / Arrow Keys",
+                "Use Food: Enter",
+                "Equip Weapon: 1 / 2",
+                "Save: F5    Load: F9",
+                "Upload: F6  Download: F10",
+                "Collision Debug: F3",
+                "Quit: ESC",
+        };
+
+        for (int i = 0; i < lines.length; i++) {
+            // Shadow + semibold for readability.
+            font.setColor(0f, 0f, 0f, 0.75f);
+            font.draw(batch, lines[i], x + 2f, (y - i * gap) - 2f);
+            font.setColor(Color.WHITE);
+            font.draw(batch, lines[i], x + 1f, y - i * gap);
+            font.draw(batch, lines[i], x, y - i * gap);
+        }
+
+        font.getData().setScale(prevScaleX, prevScaleY);
+    }
+
     private void drawTitle() {
         String title = "CITY SURVIVAL";
-        GlyphLayout layout = new GlyphLayout(font, title);
-        float x = (Gdx.graphics.getWidth() - layout.width) / 2f;
+        float x = leftMargin;
         float y = Gdx.graphics.getHeight() - 90f;
 
-        // Fake semibold
-        font.setColor(Color.BLACK);
-        font.draw(batch, title, x + 1, y);
+        // Shadow + semibold
+        font.setColor(0f, 0f, 0f, 0.75f);
+        font.draw(batch, title, x + 2f, y - 2f);
+        font.setColor(Color.WHITE);
+        font.draw(batch, title, x + 1f, y);
         font.draw(batch, title, x, y);
     }
 
@@ -207,9 +246,11 @@ public class MainMenuScreen extends ScreenAdapter {
         float tx = buttonX + (buttonW - layout.width) / 2f;
         float ty = buttonY + (buttonH + layout.height) / 2f + 6f;
 
-        // Fake semibold
+        // High-contrast label
+        font.setColor(0f, 0f, 0f, 0.85f);
+        font.draw(batch, label, tx + 2f, ty - 2f);
         font.setColor(Color.BLACK);
-        font.draw(batch, label, tx + 1, ty);
+        font.draw(batch, label, tx + 1f, ty);
         font.draw(batch, label, tx, ty);
     }
 
