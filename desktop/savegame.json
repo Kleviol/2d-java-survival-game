@@ -1,0 +1,289 @@
+{
+  "mapPath": "maps/city1.tmx",
+  "playerX": 31,
+  "playerY": 31,
+  "playerHp": 10,
+  "inventory": [],
+  "equippedWeaponLevel": 0,
+  "enemies": [
+    {
+      "x": 42,
+      "y": 36,
+      "weaponLevel": 1
+    },
+    {
+      "x": 34,
+      "y": 43,
+      "weaponLevel": 1
+    },
+    {
+      "x": 8,
+      "y": 34,
+      "weaponLevel": 1
+    },
+    {
+      "x": 10,
+      "y": 18,
+      "weaponLevel": 1
+    },
+    {
+      "x": 41,
+      "y": 13,
+      "weaponLevel": 1
+    },
+    {
+      "x": 26,
+      "y": 17,
+      "weaponLevel": 2
+    },
+    {
+      "x": 28,
+      "y": 0,
+      "weaponLevel": 2
+    },
+    {
+      "x": 56,
+      "y": 38,
+      "weaponLevel": 2
+    },
+    {
+      "x": 46,
+      "y": 46,
+      "weaponLevel": 2
+    },
+    {
+      "x": 57,
+      "y": 5,
+      "weaponLevel": 2
+    }
+  ],
+  "objects": [
+    {
+      "x": 35,
+      "y": 26,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 24,
+      "y": 24,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 5,
+      "y": 26,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 23,
+      "y": 6,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 15,
+      "y": 11,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 17,
+      "y": 36,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 12,
+      "y": 49,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 4,
+      "y": 50,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 11,
+      "y": 57,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 36,
+      "y": 56,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 34,
+      "y": 47,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 46,
+      "y": 34,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 51,
+      "y": 26,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 51,
+      "y": 12,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 34,
+      "y": 17,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 58,
+      "y": 58,
+      "type": "FOOD",
+      "name": "Food",
+      "weaponLevel": 0,
+      "healAmount": 1
+    },
+    {
+      "x": 7,
+      "y": 29,
+      "type": "WEAPON",
+      "name": "Weapon L1",
+      "weaponLevel": 1,
+      "healAmount": 0
+    },
+    {
+      "x": 23,
+      "y": 21,
+      "type": "WEAPON",
+      "name": "Weapon L1",
+      "weaponLevel": 1,
+      "healAmount": 0
+    },
+    {
+      "x": 48,
+      "y": 14,
+      "type": "WEAPON",
+      "name": "Weapon L1",
+      "weaponLevel": 1,
+      "healAmount": 0
+    },
+    {
+      "x": 53,
+      "y": 20,
+      "type": "WEAPON",
+      "name": "Weapon L1",
+      "weaponLevel": 1,
+      "healAmount": 0
+    },
+    {
+      "x": 44,
+      "y": 36,
+      "type": "WEAPON",
+      "name": "Weapon L1",
+      "weaponLevel": 1,
+      "healAmount": 0
+    },
+    {
+      "x": 51,
+      "y": 33,
+      "type": "WEAPON",
+      "name": "Weapon L2",
+      "weaponLevel": 2,
+      "healAmount": 0
+    },
+    {
+      "x": 4,
+      "y": 16,
+      "type": "WEAPON",
+      "name": "Weapon L2",
+      "weaponLevel": 2,
+      "healAmount": 0
+    },
+    {
+      "x": 22,
+      "y": 1,
+      "type": "WEAPON",
+      "name": "Weapon L2",
+      "weaponLevel": 2,
+      "healAmount": 0
+    },
+    {
+      "x": 24,
+      "y": 11,
+      "type": "WEAPON",
+      "name": "Weapon L2",
+      "weaponLevel": 2,
+      "healAmount": 0
+    },
+    {
+      "x": 40,
+      "y": 45,
+      "type": "WEAPON",
+      "name": "Weapon L2",
+      "weaponLevel": 2,
+      "healAmount": 0
+    },
+    {
+      "x": 49,
+      "y": 46,
+      "type": "WEAPON",
+      "name": "Weapon L2",
+      "weaponLevel": 2,
+      "healAmount": 0
+    },
+    {
+      "x": 29,
+      "y": 5,
+      "type": "WEAPON",
+      "name": "Weapon L2",
+      "weaponLevel": 2,
+      "healAmount": 0
+    }
+  ],
+  "steps": 9,
+  "enemiesDefeated": 0,
+  "itemsCollected": 0
+}

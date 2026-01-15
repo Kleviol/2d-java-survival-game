@@ -21,7 +21,6 @@ public class CombatSystem {
 
         Weapon playerW = player.inventory().equippedWeapon().get();
 
-        // Stronger weapon wins; L2 always beats L1 via numeric compare
         if (playerW.level() >= enemyW.level()) return CombatResult.PLAYER_WINS;
         return CombatResult.ENEMY_WINS;
     }

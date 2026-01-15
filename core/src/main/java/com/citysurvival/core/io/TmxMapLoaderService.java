@@ -72,7 +72,8 @@ public class TmxMapLoaderService {
 
             switch (name) {
                 case "player" -> player = new Player(tx, ty, 10);
-                case "enemy" -> enemies.add(new Enemy(tx, ty, new Weapon("Enemy Weapon L1", 1)));
+                case "enemy", "enemy1" -> enemies.add(new Enemy(tx, ty, new Weapon("Enemy 1", 1), 1));
+                case "enemy2" -> enemies.add(new Enemy(tx, ty, new Weapon("Enemy 2", 2), 2));
                 case "food" -> objects.add(new WorldObject(tx, ty, new Food("Food", 1)));
                 case "weapon1" -> objects.add(new WorldObject(tx, ty, new Weapon("Weapon L1", 1)));
                 case "weapon2" -> objects.add(new WorldObject(tx, ty, new Weapon("Weapon L2", 2)));
@@ -82,8 +83,6 @@ public class TmxMapLoaderService {
 
         if (player == null) throw new IllegalStateException("Spawns layer must contain an object named 'player'");
 
-        // Build collision AFTER spawns so we can auto-detect inverted collision semantics using spawn position.
-        // Many TMX maps use a tile layer to *mark walkable tiles* (roads), not blocked tiles.
         TileType[][] collision = new TileType[width][height];
 
         TiledMapTileLayer collisionTl = findTileLayer(map, "Collision", "collision", "Collisions", "collisions");

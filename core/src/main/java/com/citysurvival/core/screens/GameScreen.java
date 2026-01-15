@@ -9,10 +9,13 @@ import java.util.Properties;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.ScreenAdapter;
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
@@ -48,10 +51,13 @@ public class GameScreen extends ScreenAdapter {
     private final CombatSystem combat = new CombatSystem();
     private final SaveGameService saveGame = new SaveGameService();
 
-    private Texture texPlayer, texEnemy, texFood, texW1, texW2;
+    private Texture texPlayer, texEnemy, texEnemy1, texEnemy2, texFood, texW1, texW2;
     private Texture heroSheet;
     private Texture debugPixel;
     private TextureRegion playerRegion;
+    private TextureRegion enemy1Region;
+    private TextureRegion enemy2Region;
+    private TextureRegion enemyRegion;
     private Animation<TextureRegion>[] heroWalk;
     private float heroAnimTime = 0f;
     private boolean movedThisFrame = false;
@@ -63,6 +69,18 @@ public class GameScreen extends ScreenAdapter {
     private int tileSize = 32;
     private String tmxMapPath = "maps/city1.tmx";
     private String saveFile = "savegame.json";
+
+    private boolean musicEnabled = true;
+    private boolean sfxEnabled = true;
+    private String musicPath = "audio/bgm.ogg";
+    private String hitSfxPath = "audio/hit.wav";
+    private String attackSfxPath = "audio/attack.wav";
+    private float musicVolume = 0.55f;
+    private float sfxVolume = 0.85f;
+    private float attackSfxVolume = 0.85f;
+    private Music bgm;
+    private Sound hitSfx;
+    private Sound attackSfx;
 
     private float cameraZoom = 0.5f;
 
@@ -77,7 +95,6 @@ public class GameScreen extends ScreenAdapter {
     private final GameStats stats = new GameStats();
     private boolean gameOver = false;
 
-    // Supabase (optional)
     private CloudSaveService cloudSave;
     private String cloudPlayerId;
     private int cloudSlot = 1;
@@ -86,6 +103,7 @@ public class GameScreen extends ScreenAdapter {
     public void show() {
         loadGameProperties();
         loadAssets();
+        loadAudio();
         loadNewGameFromTmx();
 
         ensureDebugPixel();
@@ -98,6 +116,8 @@ public class GameScreen extends ScreenAdapter {
         hudCamera.update();
 
         initSupabaseIfConfigured();
+
+        startBackgroundMusicIfEnabled();
     }
 
     private void ensureDebugPixel() {
@@ -117,8 +137,29 @@ public class GameScreen extends ScreenAdapter {
             tmxMapPath = p.getProperty("tmxMap", "maps/city1.tmx");
             saveFile = p.getProperty("saveFile", "savegame.json");
             cameraZoom = Float.parseFloat(p.getProperty("cameraZoom", "0.5"));
+
+            musicEnabled = Boolean.parseBoolean(p.getProperty("musicEnabled", "true"));
+            sfxEnabled = Boolean.parseBoolean(p.getProperty("sfxEnabled", "true"));
+            musicPath = p.getProperty("musicPath", "audio/bgm.ogg");
+            hitSfxPath = p.getProperty("hitSfxPath", "audio/hit.wav");
+            attackSfxPath = p.getProperty("attackSfxPath", "audio/attack.wav");
+            musicVolume = clamp01(parseFloatSafe(p.getProperty("musicVolume", "0.55"), 0.55f));
+            sfxVolume = clamp01(parseFloatSafe(p.getProperty("sfxVolume", "0.85"), 0.85f));
+            attackSfxVolume = clamp01(parseFloatSafe(p.getProperty("attackSfxVolume", "0.85"), 0.85f));
         } catch (IOException | NumberFormatException | GdxRuntimeException ignored) {
         }
+    }
+
+    private float parseFloatSafe(String value, float fallback) {
+        try {
+            return Float.parseFloat(value);
+        } catch (RuntimeException ignored) {
+            return fallback;
+        }
+    }
+
+    private float clamp01(float v) {
+        return Math.max(0f, Math.min(1f, v));
     }
 
     @Override
@@ -151,7 +192,6 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void loadAssets() {
-        // Player can be either a single texture or a sprite sheet.
         String heroPath = "sprites/hero/hero.png";
         heroSheet = tryLoad(heroPath);
         if (heroSheet != null) {
@@ -163,23 +203,58 @@ public class GameScreen extends ScreenAdapter {
         if (texPlayer != null) {
             playerRegion = trimWholeTexture(playerPath, texPlayer);
         }
+        texEnemy1 = tryLoad("sprites/enemy/enemy1.png");
+        if (texEnemy1 != null) {
+            enemy1Region = pickEnemyFrameAndTrim("sprites/enemy/enemy1.png", texEnemy1);
+        }
+        texEnemy2 = tryLoad("sprites/enemy/enemy2.png");
+        if (texEnemy2 != null) {
+            enemy2Region = pickEnemyFrameAndTrim("sprites/enemy/enemy2.png", texEnemy2);
+        }
         texEnemy = tryLoad("sprites/enemy.png");
+        if (texEnemy != null) {
+            enemyRegion = pickEnemyFrameAndTrim("sprites/enemy.png", texEnemy);
+        }
+
         texFood = tryLoad("sprites/food/food.png");
         if (texFood == null) texFood = tryLoad("sprites/food.png");
         texW1 = tryLoad("sprites/weapons/weapon1.png");
         texW2 = tryLoad("sprites/weapons/weapon2.png");
 
-        // Backwards-compatible fallbacks if old filenames still exist.
         if (texW1 == null) texW1 = tryLoad("sprites/weapon_lv1.png");
         if (texW2 == null) texW2 = tryLoad("sprites/weapon_lv2.png");
 
-        // Only controls whether we attempt to draw textures at all.
-        useTextures = heroSheet != null || texPlayer != null || texEnemy != null || texFood != null || texW1 != null || texW2 != null;
+        useTextures = heroSheet != null || texPlayer != null || texEnemy != null || texEnemy1 != null || texEnemy2 != null || texFood != null || texW1 != null || texW2 != null;
+    }
+
+    private TextureRegion pickEnemyFrameAndTrim(String internalPath, Texture texture) {
+        try {
+            Pixmap pm = new Pixmap(Gdx.files.internal(internalPath));
+
+            int w = pm.getWidth();
+            int h = pm.getHeight();
+
+            TextureRegion base;
+            if (w % 6 == 0 && h % 4 == 0) {
+                base = new TextureRegion(texture, 0, 0, w / 6, h / 4);
+            } else if (w % 3 == 0 && h % 4 == 0) {
+                base = new TextureRegion(texture, 0, 0, w / 3, h / 4);
+            } else if (w % 4 == 0 && h % 4 == 0) {
+                base = new TextureRegion(texture, 0, 0, w / 4, h / 4);
+            } else {
+                base = new TextureRegion(texture);
+            }
+
+            TextureRegion trimmed = trimRegion(pm, texture, base);
+            pm.dispose();
+            return trimmed;
+        } catch (GdxRuntimeException e) {
+            return new TextureRegion(texture);
+        }
     }
 
     @SuppressWarnings("unchecked")
     private void initHeroAnimations(String sheetPath, Texture sheet) {
-        // Default sheet layout based on the provided hero.png: 6 columns x 4 rows.
         int cols = 6;
         int rows = 4;
         int frameW = sheet.getWidth() / cols;
@@ -188,8 +263,6 @@ public class GameScreen extends ScreenAdapter {
 
         TextureRegion[][] grid = TextureRegion.split(sheet, frameW, frameH);
 
-        // Trim transparent padding inside each frame so the character fills the drawn area.
-        // This fixes cases where the sprite sheet cells include big empty margins.
         try {
             Pixmap pm = new Pixmap(Gdx.files.internal(sheetPath));
             for (int r = 0; r < rows; r++) {
@@ -224,7 +297,75 @@ public class GameScreen extends ScreenAdapter {
     private Texture tryLoad(String internalPath) {
         try {
             if (!Gdx.files.internal(internalPath).exists()) return null;
-            return new Texture(Gdx.files.internal(internalPath));
+            Texture t = new Texture(Gdx.files.internal(internalPath));
+            t.setFilter(TextureFilter.Nearest, TextureFilter.Nearest);
+            return t;
+        } catch (GdxRuntimeException e) {
+            return null;
+        }
+    }
+
+    private void loadAudio() {
+        disposeAudio();
+
+        if (musicEnabled) {
+            bgm = tryLoadMusic(musicPath);
+            if (bgm != null) {
+                bgm.setLooping(true);
+                bgm.setVolume(musicVolume);
+            }
+        }
+
+        if (sfxEnabled) {
+            hitSfx = tryLoadSound(hitSfxPath);
+            attackSfx = tryLoadSound(attackSfxPath);
+        }
+    }
+
+    private void startBackgroundMusicIfEnabled() {
+        if (!musicEnabled || bgm == null) return;
+        try {
+            if (!bgm.isPlaying()) {
+                bgm.play();
+            }
+        } catch (GdxRuntimeException ignored) {
+        }
+    }
+
+    private void disposeAudio() {
+        if (bgm != null) {
+            try {
+                bgm.stop();
+            } catch (RuntimeException ignored) {
+            }
+            bgm.dispose();
+            bgm = null;
+        }
+        if (hitSfx != null) {
+            hitSfx.dispose();
+            hitSfx = null;
+        }
+        if (attackSfx != null) {
+            attackSfx.dispose();
+            attackSfx = null;
+        }
+    }
+
+    private Music tryLoadMusic(String internalPath) {
+        try {
+            if (internalPath == null || internalPath.isBlank()) return null;
+            if (!Gdx.files.internal(internalPath).exists()) return null;
+            return Gdx.audio.newMusic(Gdx.files.internal(internalPath));
+        } catch (GdxRuntimeException e) {
+            return null;
+        }
+    }
+
+    private Sound tryLoadSound(String internalPath) {
+        try {
+            if (internalPath == null || internalPath.isBlank()) return null;
+            if (!Gdx.files.internal(internalPath).exists()) return null;
+            return Gdx.audio.newSound(Gdx.files.internal(internalPath));
         } catch (GdxRuntimeException e) {
             return null;
         }
@@ -243,15 +384,11 @@ public class GameScreen extends ScreenAdapter {
 
         mapRenderer = new OrthogonalTiledMapRenderer(tiledMap, 1f);
 
-        // Keep our grid/render scale consistent with the TMX file.
-        // This prevents “collision looks inverted/offset” issues when config fails to load or is stale.
         Integer mapTileWidth = tiledMap.getProperties().get("tilewidth", Integer.class);
         if (mapTileWidth != null && mapTileWidth > 0) {
             tileSize = mapTileWidth;
         }
 
-        // Render the player as exactly one tile (tileSize x tileSize).
-        // (Movement/collision is still tile-based; this only changes rendering size.)
         if (player != null) {
             player.setSize(tileSize, tileSize);
         }
@@ -334,7 +471,31 @@ public class GameScreen extends ScreenAdapter {
 
         if (!inBounds(nx, ny)) return;
         if (!collision[nx][ny].walkable) {
+            facing = dir;
+            stats.steps++;
+            endTurn(false, true);
+            if (player.isDead()) gameOver = true;
             return;
+        }
+
+        Enemy enemyAtTarget = findEnemyAt(nx, ny);
+        if (enemyAtTarget != null) {
+            playAttackSfx();
+            CombatSystem.CombatResult result = combat.fight(player, enemyAtTarget);
+            switch (result) {
+                case PLAYER_WINS -> {
+                    enemies.remove(enemyAtTarget);
+                    stats.enemiesDefeated++;
+                }
+                case ENEMY_WINS, NO_WEAPON -> {
+                    applyEnemyHit(3);
+                    stats.steps++;
+                    endTurn(true, false);
+
+                    if (player.isDead()) gameOver = true;
+                    return;
+                }
+            }
         }
 
         player.setPos(nx, ny);
@@ -343,11 +504,55 @@ public class GameScreen extends ScreenAdapter {
         stats.steps++;
 
         pickupObjectsIfAny(nx, ny);
-
-        enemyAI.moveEnemiesAfterPlayer(collision, enemies);
-
-        resolveCombatIfAny();
+        endTurn(false, false);
         if (player.isDead()) gameOver = true;
+    }
+
+    private void endTurn(boolean alreadyDamagedThisTurn, boolean allowAdjacentAttackThisTurn) {
+        enemyAI.moveEnemiesAfterPlayer(collision, enemies, player.x(), player.y());
+
+        if (allowAdjacentAttackThisTurn && !alreadyDamagedThisTurn) {
+            resolveAdjacentEnemyAttacks();
+        }
+        resolveCombatIfAny();
+    }
+
+    private void resolveAdjacentEnemyAttacks() {
+        for (Enemy e : enemies) {
+            int dist = Math.abs(e.x() - player.x()) + Math.abs(e.y() - player.y());
+            if (dist != 1) continue;
+
+            CombatSystem.CombatResult r = combat.fight(player, e);
+            if (r != CombatSystem.CombatResult.PLAYER_WINS) {
+                applyEnemyHit(3);
+            }
+            break;
+        }
+    }
+
+    private void applyEnemyHit(int amount) {
+        if (amount <= 0) return;
+        player.damage(amount);
+        if (!sfxEnabled || hitSfx == null) return;
+        try {
+            hitSfx.play(sfxVolume);
+        } catch (GdxRuntimeException ignored) {
+        }
+    }
+
+    private void playAttackSfx() {
+        if (!sfxEnabled || attackSfx == null) return;
+        try {
+            attackSfx.play(attackSfxVolume);
+        } catch (GdxRuntimeException ignored) {
+        }
+    }
+
+    private Enemy findEnemyAt(int x, int y) {
+        for (Enemy e : enemies) {
+            if (e.x() == x && e.y() == y) return e;
+        }
+        return null;
     }
 
     private void pickupObjectsIfAny(int x, int y) {
@@ -367,15 +572,27 @@ public class GameScreen extends ScreenAdapter {
         while (it.hasNext()) {
             Enemy e = it.next();
             if (e.x() == player.x() && e.y() == player.y()) {
+                playAttackSfx();
                 CombatSystem.CombatResult result = combat.fight(player, e);
                 switch (result) {
                     case PLAYER_WINS -> {
                         it.remove();
                         stats.enemiesDefeated++;
                     }
-                    case ENEMY_WINS -> player.damage(2);
-                    case NO_WEAPON -> player.damage(3);
+                    case ENEMY_WINS -> applyEnemyHit(3);
+                    case NO_WEAPON -> applyEnemyHit(3);
                 }
+                break;
+            }
+        }
+    }
+
+    @Override
+    public void hide() {
+        if (bgm != null) {
+            try {
+                bgm.stop();
+            } catch (RuntimeException ignored) {
             }
         }
     }
@@ -406,9 +623,23 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void drawEnemies() {
-        if (!useTextures || texEnemy == null) return;
+        if (!useTextures) return;
         for (Enemy e : enemies) {
-            batch.draw(texEnemy, e.x() * tileSize, e.y() * tileSize, tileSize, tileSize);
+            int kind = e.kind();
+
+            batch.setColor(1f, 1f, 1f, 1f);
+
+            TextureRegion r = (kind >= 2) ? enemy2Region : enemy1Region;
+            if (r == null) r = enemyRegion;
+
+            if (r != null) {
+                batch.draw(r, e.x() * tileSize, e.y() * tileSize, tileSize, tileSize);
+                continue;
+            }
+
+            Texture t = (kind >= 2) ? texEnemy2 : texEnemy1;
+            if (t == null) t = texEnemy;
+            if (t != null) batch.draw(t, e.x() * tileSize, e.y() * tileSize, tileSize, tileSize);
         }
     }
 
@@ -463,7 +694,9 @@ public class GameScreen extends ScreenAdapter {
         for (int y = srcY; y < srcY + srcH; y++) {
             for (int x = srcX; x < srcX + srcW; x++) {
                 int pixel = pm.getPixel(x, y);
-                int alpha = pixel & 0xFF;
+                int alphaLo = pixel & 0xFF;
+                int alphaHi = (pixel >>> 24) & 0xFF;
+                int alpha = Math.max(alphaLo, alphaHi);
                 if (alpha > 0) {
                     if (x < minX) minX = x;
                     if (y < minY) minY = y;
@@ -496,8 +729,6 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void drawHud() {
-        // Larger HUD text in a top-right column.
-        // Draw a panel behind it so it stays readable even when the map is dark.
         font.getData().setScale(1.4f);
         font.setColor(Color.BLACK);
 
@@ -525,7 +756,6 @@ public class GameScreen extends ScreenAdapter {
         float startX = Gdx.graphics.getWidth() - padding - maxWidth;
         float startY = Gdx.graphics.getHeight() - padding;
 
-        // Background panel for readability
         if (debugPixel != null) {
             float lineH = font.getLineHeight();
             float totalH = (lines.length * lineH) + ((lines.length - 1) * lineGap);
@@ -537,11 +767,9 @@ public class GameScreen extends ScreenAdapter {
             float panelH = totalH + (panelPadY * 2f);
 
             Color prev = batch.getColor();
-            // Light panel so black text pops even on dark maps.
             batch.setColor(1f, 1f, 1f, 0.70f);
             batch.draw(debugPixel, panelX, panelY, panelW, panelH);
 
-            // Border
             batch.setColor(0f, 0f, 0f, 0.55f);
             float b = 2f;
             batch.draw(debugPixel, panelX, panelY, panelW, b);
@@ -558,8 +786,6 @@ public class GameScreen extends ScreenAdapter {
         }
 
         drawInventoryPanel();
-
-        // Keep game-over message visible.
         if (gameOver) {
             font.getData().setScale(1.6f);
             font.setColor(Color.RED);
@@ -578,11 +804,9 @@ public class GameScreen extends ScreenAdapter {
 
         Color prev = batch.getColor();
 
-        // Panel background (semi-transparent, does not affect sprites because we restore batch color).
         batch.setColor(1f, 1f, 1f, 0.70f);
         batch.draw(debugPixel, panelX, panelY, panelW, panelH);
 
-        // 3-slot inventory.
         float slot = 64f;
         float gap = 18f;
         float slotsW = (slot * 3f) + (gap * 2f);
@@ -604,14 +828,12 @@ public class GameScreen extends ScreenAdapter {
         for (int i = 0; i < 3; i++) {
             float slotX = firstSlotX + i * (slot + gap);
 
-            // Slot border
             batch.setColor(0f, 0f, 0f, 0.75f);
             batch.draw(debugPixel, slotX, slotY, slot, 2f);
             batch.draw(debugPixel, slotX, slotY + slot - 2f, slot, 2f);
             batch.draw(debugPixel, slotX, slotY, 2f, slot);
             batch.draw(debugPixel, slotX + slot - 2f, slotY, 2f, slot);
 
-            // Slot contents
             if (i == 0 && hasWeapon) {
                 player.inventory().equippedWeapon().ifPresent(w -> {
                     Texture t = (w.level() == 1) ? texW1 : texW2;
@@ -631,7 +853,6 @@ public class GameScreen extends ScreenAdapter {
                     batch.draw(texFood, slotX + pad, slotY + pad, slot - 2 * pad, slot - 2 * pad);
                 }
 
-                // Stack count: bigger + outlined so it's readable over any icon/background.
                 font.getData().setScale(1.25f);
                 String countText = "x" + inThisSlot;
                 glyphLayout.setText(font, countText);
@@ -661,7 +882,6 @@ public class GameScreen extends ScreenAdapter {
         font.draw(batch, text, x + 1f, y + 1f);
 
         font.setColor(fill);
-        // Slightly thicker look
         font.draw(batch, text, x + 1f, y);
         font.draw(batch, text, x, y);
 
@@ -669,26 +889,27 @@ public class GameScreen extends ScreenAdapter {
     }
 
     private void drawSemibold(BitmapFont font, String text, float x, float y) {
-        // Simple double-draw to simulate semi-bold.
         font.draw(batch, text, x + 1f, y);
         font.draw(batch, text, x, y);
     }
 
     private void saveLocal() {
-        SaveGameService.SaveState state = SaveGameService.buildState(player, enemies, objects, stats);
+        SaveGameService.SaveState state = SaveGameService.buildState(tmxMapPath, player, enemies, objects, stats);
         saveGame.saveLocal(saveFile, state);
         Gdx.app.log("SAVE", "Saved to " + saveFile);
     }
 
-    private void loadLocal() {
-        SaveGameService.SaveState s = saveGame.loadLocal(saveFile);
-        if (s == null) {
-            Gdx.app.log("SAVE", "No local save found.");
-            return;
+    private void applyLoadedState(SaveGameService.SaveState s) {
+        if (s == null) return;
+
+        if (s.mapPath != null && !s.mapPath.isBlank() && !s.mapPath.equals(tmxMapPath)) {
+            tmxMapPath = s.mapPath;
+            loadNewGameFromTmx();
         }
 
         player = new Player(s.playerX, s.playerY, 10);
         if (s.playerHp < 10) player.damage(10 - s.playerHp);
+        player.setSize(tileSize, tileSize);
 
         if (s.inventory != null) {
             for (SaveGameService.SavedItem si : s.inventory) {
@@ -698,17 +919,24 @@ public class GameScreen extends ScreenAdapter {
         }
         if (s.equippedWeaponLevel > 0) player.inventory().equipWeaponLevel(s.equippedWeaponLevel);
 
+        if (enemies == null) enemies = new java.util.ArrayList<>();
         enemies.clear();
-        for (SaveGameService.SavedEnemy se : s.enemies) {
-            enemies.add(new Enemy(se.x, se.y, new com.citysurvival.core.model.items.Weapon("Enemy Weapon L" + se.weaponLevel, se.weaponLevel)));
+        if (s.enemies != null) {
+            for (SaveGameService.SavedEnemy se : s.enemies) {
+                int kind = (se.weaponLevel >= 2) ? 2 : 1;
+                enemies.add(new Enemy(se.x, se.y, new com.citysurvival.core.model.items.Weapon("Enemy Weapon L" + se.weaponLevel, se.weaponLevel), kind));
+            }
         }
 
+        if (objects == null) objects = new java.util.ArrayList<>();
         objects.clear();
-        for (SaveGameService.SavedObject so : s.objects) {
-            if ("FOOD".equals(so.type)) {
-                objects.add(new WorldObject(so.x, so.y, new com.citysurvival.core.model.items.Food(so.name, so.healAmount)));
-            } else if ("WEAPON".equals(so.type)) {
-                objects.add(new WorldObject(so.x, so.y, new com.citysurvival.core.model.items.Weapon(so.name, so.weaponLevel)));
+        if (s.objects != null) {
+            for (SaveGameService.SavedObject so : s.objects) {
+                if ("FOOD".equals(so.type)) {
+                    objects.add(new WorldObject(so.x, so.y, new com.citysurvival.core.model.items.Food(so.name, so.healAmount)));
+                } else if ("WEAPON".equals(so.type)) {
+                    objects.add(new WorldObject(so.x, so.y, new com.citysurvival.core.model.items.Weapon(so.name, so.weaponLevel)));
+                }
             }
         }
 
@@ -717,6 +945,16 @@ public class GameScreen extends ScreenAdapter {
         stats.itemsCollected = s.itemsCollected;
 
         gameOver = player.isDead();
+    }
+
+    private void loadLocal() {
+        SaveGameService.SaveState s = saveGame.loadLocal(saveFile);
+        if (s == null) {
+            Gdx.app.log("SAVE", "No local save found.");
+            return;
+        }
+
+        applyLoadedState(s);
         Gdx.app.log("SAVE", "Loaded from " + saveFile);
     }
 
@@ -726,7 +964,7 @@ public class GameScreen extends ScreenAdapter {
             return;
         }
         try {
-            SaveGameService.SaveState state = SaveGameService.buildState(player, enemies, objects, stats);
+            SaveGameService.SaveState state = SaveGameService.buildState(tmxMapPath, player, enemies, objects, stats);
             String json = saveGame.toJson(state);
             cloudSave.uploadSave(cloudPlayerId, cloudSlot, json);
             Gdx.app.log("CLOUD", "Uploaded save to Supabase.");
@@ -748,36 +986,7 @@ public class GameScreen extends ScreenAdapter {
             }
             SaveGameService.SaveState s = saveGame.fromJson(json);
 
-            player = new Player(s.playerX, s.playerY, 10);
-            if (s.playerHp < 10) player.damage(10 - s.playerHp);
-
-            if (s.inventory != null) {
-                for (SaveGameService.SavedItem si : s.inventory) {
-                    if ("FOOD".equals(si.type)) player.inventory().add(new com.citysurvival.core.model.items.Food(si.name, si.healAmount));
-                    if ("WEAPON".equals(si.type)) player.inventory().add(new com.citysurvival.core.model.items.Weapon(si.name, si.weaponLevel));
-                }
-            }
-            if (s.equippedWeaponLevel > 0) player.inventory().equipWeaponLevel(s.equippedWeaponLevel);
-
-            enemies.clear();
-            for (SaveGameService.SavedEnemy se : s.enemies) {
-                enemies.add(new Enemy(se.x, se.y, new com.citysurvival.core.model.items.Weapon("Enemy Weapon L" + se.weaponLevel, se.weaponLevel)));
-            }
-
-            objects.clear();
-            for (SaveGameService.SavedObject so : s.objects) {
-                if ("FOOD".equals(so.type)) {
-                    objects.add(new WorldObject(so.x, so.y, new com.citysurvival.core.model.items.Food(so.name, so.healAmount)));
-                } else if ("WEAPON".equals(so.type)) {
-                    objects.add(new WorldObject(so.x, so.y, new com.citysurvival.core.model.items.Weapon(so.name, so.weaponLevel)));
-                }
-            }
-
-            stats.steps = s.steps;
-            stats.enemiesDefeated = s.enemiesDefeated;
-            stats.itemsCollected = s.itemsCollected;
-
-            gameOver = player.isDead();
+            applyLoadedState(s);
             Gdx.app.log("CLOUD", "Downloaded and loaded cloud save.");
         } catch (IOException | RuntimeException e) {
             Gdx.app.error("CLOUD", "Download failed: " + e.getMessage(), e);
@@ -791,9 +1000,12 @@ public class GameScreen extends ScreenAdapter {
         if (mapRenderer != null) mapRenderer.dispose();
         if (tiledMap != null) tiledMap.dispose();
         if (debugPixel != null) debugPixel.dispose();
+        disposeAudio();
         if (texPlayer != null) texPlayer.dispose();
         if (heroSheet != null) heroSheet.dispose();
         if (texEnemy != null) texEnemy.dispose();
+        if (texEnemy1 != null) texEnemy1.dispose();
+        if (texEnemy2 != null) texEnemy2.dispose();
         if (texFood != null) texFood.dispose();
         if (texW1 != null) texW1.dispose();
         if (texW2 != null) texW2.dispose();

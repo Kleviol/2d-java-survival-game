@@ -200,11 +200,11 @@
   <object id="5" name="enemy" x="144" y="399.818" width="16" height="16"/>
   <object id="6" name="enemy" x="160" y="704" width="16" height="16"/>
   <object id="7" name="enemy" x="639.938" y="704.188" width="16" height="16"/>
-  <object id="8" name="enemy" x="351.5" y="671.5" width="16" height="16"/>
-  <object id="9" name="enemy" x="480.25" y="929" width="16" height="16"/>
-  <object id="10" name="enemy" x="880.091" y="368.545" width="16" height="16"/>
-  <object id="11" name="enemy" x="719.818" y="160" width="16" height="16"/>
-  <object id="12" name="enemy" x="848.03" y="863.167" width="16" height="16"/>
+  <object id="8" name="enemy2" x="351.5" y="671.5" width="16" height="16"/>
+  <object id="9" name="enemy2" x="480.25" y="929" width="16" height="16"/>
+  <object id="10" name="enemy2" x="880.091" y="368.545" width="16" height="16"/>
+  <object id="11" name="enemy2" x="719.818" y="160" width="16" height="16"/>
+  <object id="12" name="enemy2" x="848.03" y="863.167" width="16" height="16"/>
   <object id="13" name="food" x="560.417" y="527.333" width="16" height="16"/>
   <object id="14" name="food" x="384.042" y="544.208" width="16" height="16"/>
   <object id="15" name="food" x="95.9783" y="512.043" width="16" height="16"/>

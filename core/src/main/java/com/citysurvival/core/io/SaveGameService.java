@@ -1,5 +1,8 @@
 package com.citysurvival.core.io;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.citysurvival.core.model.Enemy;
@@ -12,9 +15,6 @@ import com.citysurvival.core.model.items.ItemType;
 import com.citysurvival.core.model.items.Weapon;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class SaveGameService {
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -35,7 +35,12 @@ public class SaveGameService {
     public SaveState fromJson(String json) { return gson.fromJson(json, SaveState.class); }
 
     public static SaveState buildState(Player player, List<Enemy> enemies, List<WorldObject> objects, GameStats stats) {
+        return buildState(null, player, enemies, objects, stats);
+    }
+
+    public static SaveState buildState(String mapPath, Player player, List<Enemy> enemies, List<WorldObject> objects, GameStats stats) {
         SaveState s = new SaveState();
+        s.mapPath = mapPath;
         s.playerX = player.x();
         s.playerY = player.y();
         s.playerHp = player.hp();
@@ -75,6 +80,8 @@ public class SaveGameService {
     }
 
     public static class SaveState {
+        public String mapPath;
+
         public int playerX;
         public int playerY;
         public int playerHp;

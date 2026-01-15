@@ -36,13 +36,11 @@ public class MainMenuScreen extends ScreenAdapter {
     private String tmxMapPath = "maps/city1.tmx";
     private float cameraZoom = 0.5f;
 
-    // Button bounds in HUD (screen) coordinates
     private float buttonX;
     private float buttonY;
     private float buttonW;
     private float buttonH;
 
-    // Left-column layout
     private final float leftMargin = 70f;
 
     public MainMenuScreen(CitySurvivalGame game) {
@@ -72,7 +70,6 @@ public class MainMenuScreen extends ScreenAdapter {
 
         layoutButton();
 
-        // Slightly bigger menu text.
         font.getData().setScale(2.2f);
         font.setColor(Color.WHITE);
     }
@@ -122,7 +119,6 @@ public class MainMenuScreen extends ScreenAdapter {
 
         buttonW = 260f;
         buttonH = 70f;
-        // Place in left column (top-left to middle-left region)
         buttonX = leftMargin;
         buttonY = sh / 2f - buttonH / 2f;
     }
@@ -163,12 +159,10 @@ public class MainMenuScreen extends ScreenAdapter {
             mapRenderer.render();
         }
 
-        // HUD overlay + menu UI
         batch.setProjectionMatrix(hudCamera.combined);
         batch.begin();
         batch.setColor(Color.WHITE);
 
-        // Semi-transparent dim over the map.
         Color prev = batch.getColor();
         batch.setColor(0f, 0f, 0f, 0.45f);
         batch.draw(pixel, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
@@ -203,7 +197,6 @@ public class MainMenuScreen extends ScreenAdapter {
         };
 
         for (int i = 0; i < lines.length; i++) {
-            // Shadow + semibold for readability.
             font.setColor(0f, 0f, 0f, 0.75f);
             font.draw(batch, lines[i], x + 2f, (y - i * gap) - 2f);
             font.setColor(Color.WHITE);
@@ -219,7 +212,6 @@ public class MainMenuScreen extends ScreenAdapter {
         float x = leftMargin;
         float y = Gdx.graphics.getHeight() - 90f;
 
-        // Shadow + semibold
         font.setColor(0f, 0f, 0f, 0.75f);
         font.draw(batch, title, x + 2f, y - 2f);
         font.setColor(Color.WHITE);
@@ -228,12 +220,10 @@ public class MainMenuScreen extends ScreenAdapter {
     }
 
     private void drawButton() {
-        // Button background
         Color prev = batch.getColor();
         batch.setColor(1f, 1f, 1f, 0.85f);
         batch.draw(pixel, buttonX, buttonY, buttonW, buttonH);
 
-        // Simple border
         batch.setColor(0f, 0f, 0f, 0.55f);
         batch.draw(pixel, buttonX, buttonY, buttonW, 2f);
         batch.draw(pixel, buttonX, buttonY + buttonH - 2f, buttonW, 2f);
@@ -246,7 +236,6 @@ public class MainMenuScreen extends ScreenAdapter {
         float tx = buttonX + (buttonW - layout.width) / 2f;
         float ty = buttonY + (buttonH + layout.height) / 2f + 6f;
 
-        // High-contrast label
         font.setColor(0f, 0f, 0f, 0.85f);
         font.draw(batch, label, tx + 2f, ty - 2f);
         font.setColor(Color.BLACK);
