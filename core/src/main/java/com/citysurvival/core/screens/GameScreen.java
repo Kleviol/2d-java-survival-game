@@ -11,6 +11,7 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Pixmap;
@@ -25,6 +26,7 @@ import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.citysurvival.core.audio.AudioBootstrap;
 import com.citysurvival.core.io.SaveGameService;
 import com.citysurvival.core.io.TmxMapLoaderService;
 import com.citysurvival.core.logic.CombatSystem;
@@ -75,12 +77,16 @@ public class GameScreen extends ScreenAdapter {
     private String musicPath = "audio/bgm.ogg";
     private String hitSfxPath = "audio/hit.wav";
     private String attackSfxPath = "audio/attack.wav";
+    private String victorySfxPath = "audio/success.wav";
     private float musicVolume = 0.55f;
     private float sfxVolume = 0.85f;
     private float attackSfxVolume = 0.85f;
+    private float victorySfxVolume = 0.90f;
     private Music bgm;
     private Sound hitSfx;
     private Sound attackSfx;
+    private Sound victorySfx;
+    private boolean victorySfxPlayed = false;
 
     private float cameraZoom = 0.5f;
 
@@ -94,6 +100,9 @@ public class GameScreen extends ScreenAdapter {
 
     private final GameStats stats = new GameStats();
     private boolean gameOver = false;
+
+    private boolean victory = false;
+    private int victoryMenuIndex = 0; // 0=Restart, 1=Exit
 
     private CloudSaveService cloudSave;
     private String cloudPlayerId;
@@ -143,9 +152,11 @@ public class GameScreen extends ScreenAdapter {
             musicPath = p.getProperty("musicPath", "audio/bgm.ogg");
             hitSfxPath = p.getProperty("hitSfxPath", "audio/hit.wav");
             attackSfxPath = p.getProperty("attackSfxPath", "audio/attack.wav");
+            victorySfxPath = p.getProperty("victorySfxPath", "audio/success.wav");
             musicVolume = clamp01(parseFloatSafe(p.getProperty("musicVolume", "0.55"), 0.55f));
             sfxVolume = clamp01(parseFloatSafe(p.getProperty("sfxVolume", "0.85"), 0.85f));
             attackSfxVolume = clamp01(parseFloatSafe(p.getProperty("attackSfxVolume", "0.85"), 0.85f));
+            victorySfxVolume = clamp01(parseFloatSafe(p.getProperty("victorySfxVolume", "0.90"), 0.90f));
         } catch (IOException | NumberFormatException | GdxRuntimeException ignored) {
         }
     }
@@ -309,7 +320,7 @@ public class GameScreen extends ScreenAdapter {
         disposeAudio();
 
         if (musicEnabled) {
-            bgm = tryLoadMusic(musicPath);
+            bgm = tryLoadMusicWithFallback(musicPath);
             if (bgm != null) {
                 bgm.setLooping(true);
                 bgm.setVolume(musicVolume);
@@ -317,8 +328,9 @@ public class GameScreen extends ScreenAdapter {
         }
 
         if (sfxEnabled) {
-            hitSfx = tryLoadSound(hitSfxPath);
-            attackSfx = tryLoadSound(attackSfxPath);
+            hitSfx = tryLoadSoundWithFallback(hitSfxPath, AudioBootstrap.ensureFallbackHit());
+            attackSfx = tryLoadSoundWithFallback(attackSfxPath, AudioBootstrap.ensureFallbackAttack());
+            victorySfx = tryLoadSoundWithFallback(victorySfxPath, AudioBootstrap.ensureFallbackSuccess());
         }
     }
 
@@ -349,6 +361,10 @@ public class GameScreen extends ScreenAdapter {
             attackSfx.dispose();
             attackSfx = null;
         }
+        if (victorySfx != null) {
+            victorySfx.dispose();
+            victorySfx = null;
+        }
     }
 
     private Music tryLoadMusic(String internalPath) {
@@ -367,6 +383,52 @@ public class GameScreen extends ScreenAdapter {
             if (!Gdx.files.internal(internalPath).exists()) return null;
             return Gdx.audio.newSound(Gdx.files.internal(internalPath));
         } catch (GdxRuntimeException e) {
+            return null;
+        }
+    }
+
+    private Music tryLoadMusicWithFallback(String internalPath) {
+        Music m = tryLoadMusic(internalPath);
+        if (m != null) return m;
+
+        FileHandle fallback = AudioBootstrap.ensureFallbackBgm();
+        if (fallback == null) return null;
+
+        try {
+            if (internalPath != null && !internalPath.isBlank()) {
+                try {
+                    Gdx.app.log("GameScreen", "Missing music asset '" + internalPath + "' - using generated fallback: " + fallback.path());
+                } catch (RuntimeException ignored) {
+                }
+            }
+            return Gdx.audio.newMusic(fallback);
+        } catch (GdxRuntimeException e) {
+            try {
+                Gdx.app.error("GameScreen", "Failed to load fallback music: " + fallback.path(), e);
+            } catch (RuntimeException ignored) {
+            }
+            return null;
+        }
+    }
+
+    private Sound tryLoadSoundWithFallback(String internalPath, FileHandle fallback) {
+        Sound s = tryLoadSound(internalPath);
+        if (s != null) return s;
+
+        if (fallback == null) return null;
+        try {
+            if (internalPath != null && !internalPath.isBlank()) {
+                try {
+                    Gdx.app.log("GameScreen", "Missing SFX asset '" + internalPath + "' - using generated fallback: " + fallback.path());
+                } catch (RuntimeException ignored) {
+                }
+            }
+            return Gdx.audio.newSound(fallback);
+        } catch (GdxRuntimeException e) {
+            try {
+                Gdx.app.error("GameScreen", "Failed to load fallback SFX: " + fallback.path(), e);
+            } catch (RuntimeException ignored) {
+            }
             return null;
         }
     }
@@ -397,6 +459,10 @@ public class GameScreen extends ScreenAdapter {
         stats.enemiesDefeated = 0;
         stats.itemsCollected = 0;
         gameOver = false;
+
+        victory = false;
+        victoryMenuIndex = 0;
+        victorySfxPlayed = false;
     }
 
     @Override
@@ -433,6 +499,33 @@ public class GameScreen extends ScreenAdapter {
     private void handleInput() {
         if (gameOver) {
             if (Gdx.input.isKeyJustPressed(Input.Keys.R)) loadNewGameFromTmx();
+            return;
+        }
+
+        if (victory) {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.UP) || Gdx.input.isKeyJustPressed(Input.Keys.W)
+                    || Gdx.input.isKeyJustPressed(Input.Keys.DOWN) || Gdx.input.isKeyJustPressed(Input.Keys.S)) {
+                victoryMenuIndex = (victoryMenuIndex + 1) % 2;
+            }
+
+            if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
+                loadNewGameFromTmx();
+                startBackgroundMusicIfEnabled();
+                return;
+            }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+                Gdx.app.exit();
+                return;
+            }
+
+            if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+                if (victoryMenuIndex == 0) {
+                    loadNewGameFromTmx();
+                    startBackgroundMusicIfEnabled();
+                } else {
+                    Gdx.app.exit();
+                }
+            }
             return;
         }
 
@@ -486,6 +579,7 @@ public class GameScreen extends ScreenAdapter {
                 case PLAYER_WINS -> {
                     enemies.remove(enemyAtTarget);
                     stats.enemiesDefeated++;
+                    triggerVictoryIfAllEnemiesKilled();
                 }
                 case ENEMY_WINS, NO_WEAPON -> {
                     applyEnemyHit(3);
@@ -515,6 +609,9 @@ public class GameScreen extends ScreenAdapter {
             resolveAdjacentEnemyAttacks();
         }
         resolveCombatIfAny();
+
+        // The player might have killed the last enemy during resolveCombatIfAny.
+        triggerVictoryIfAllEnemiesKilled();
     }
 
     private void resolveAdjacentEnemyAttacks() {
@@ -544,6 +641,31 @@ public class GameScreen extends ScreenAdapter {
         if (!sfxEnabled || attackSfx == null) return;
         try {
             attackSfx.play(attackSfxVolume);
+        } catch (GdxRuntimeException ignored) {
+        }
+    }
+
+    private void triggerVictoryIfAllEnemiesKilled() {
+        if (victory || gameOver) return;
+        if (enemies == null || enemies.isEmpty()) {
+            victory = true;
+            victoryMenuIndex = 0;
+
+            try {
+                if (bgm != null) bgm.stop();
+            } catch (RuntimeException ignored) {
+            }
+
+            playVictorySfxOnce();
+        }
+    }
+
+    private void playVictorySfxOnce() {
+        if (!sfxEnabled || victorySfx == null) return;
+        if (victorySfxPlayed) return;
+        try {
+            victorySfx.play(victorySfxVolume);
+            victorySfxPlayed = true;
         } catch (GdxRuntimeException ignored) {
         }
     }
@@ -790,6 +912,23 @@ public class GameScreen extends ScreenAdapter {
             font.getData().setScale(1.6f);
             font.setColor(Color.RED);
             drawSemibold(font, "GAME OVER - Press R to restart", 220, 360);
+        }
+
+        if (victory) {
+            float x = 220f;
+            float y2 = 420f;
+
+            font.getData().setScale(1.7f);
+            font.setColor(Color.GREEN);
+            drawSemibold(font, "Success all the enemies killed!", x, y2);
+
+            font.getData().setScale(1.35f);
+            font.setColor(Color.BLACK);
+
+            String restart = (victoryMenuIndex == 0) ? "> Restart" : "  Restart";
+            String exit = (victoryMenuIndex == 1) ? "> Exit" : "  Exit";
+            drawSemibold(font, restart + "  (R)", x, y2 - 55f);
+            drawSemibold(font, exit + "  (Esc)", x, y2 - 95f);
         }
     }
 
